@@ -1,0 +1,186 @@
+// ===================================================
+// HRMS Backend — Prisma Schema
+// Owned by: Odusanya Abayomi (Foundation — Auth, Company, Employees)
+//
+// Scope: this file defines the tables Person 1 owns.
+// Other teammates' models (Job, Applicant, Interview, LeaveRequest,
+// Goal, PerformanceReview, Notification, AuditLog, etc.) should be
+// appended to this same schema file as they're built, since Prisma
+// requires a single schema.prisma per project. Coordinate merges
+// via PRs rather than everyone editing this file at once.
+// ===================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------
+// ENUMS
+// ---------------------------------------------------
+
+enum RoleName {
+  super_admin
+  hr_admin
+  manager
+  employee
+  applicant
+}
+
+enum EmploymentType {
+  full_time
+  part_time
+  contract
+  intern
+}
+
+enum EmployeeStatus {
+  active
+  inactive
+  exited
+}
+
+// ---------------------------------------------------
+// COMPANIES (multi-tenancy root)
+// ---------------------------------------------------
+
+model Company {
+  id                  Int      @id @default(autoincrement())
+  name                String
+  registrationNumber  String?  @map("registration_number")
+  industry            String?
+  phoneNumber         String?  @map("phone_number")
+  email               String?
+  website             String?
+  address             String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  users        User[]
+  departments  Department[]
+  employees    Employee[]
+
+  @@map("companies")
+}
+
+// ---------------------------------------------------
+// ROLES (static reference table, seeded once)
+// ---------------------------------------------------
+
+model Role {
+  id    Int      @id @default(autoincrement())
+  name  RoleName @unique
+
+  users User[]
+
+  @@map("roles")
+}
+
+// ---------------------------------------------------
+// USERS (login/identity — separate from profile data)
+// ---------------------------------------------------
+
+model User {
+  id                  Int       @id @default(autoincrement())
+  companyId           Int?      @map("company_id") // nullable: applicants aren't tied to a company until hired
+  roleId              Int       @map("role_id")
+  email               String    @unique
+  passwordHash        String?   @map("password_hash") // nullable: OAuth-only users
+  googleId            String?   @unique @map("google_id")
+  isVerified          Boolean   @default(false) @map("is_verified")
+  resetToken          String?   @map("reset_token")
+  resetTokenExpires    DateTime? @map("reset_token_expires")
+  refreshToken        String?   @map("refresh_token")
+  createdAt           DateTime  @default(now()) @map("created_at")
+  updatedAt           DateTime  @updatedAt @map("updated_at")
+
+  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role      Role      @relation(fields: [roleId], references: [id])
+  employee  Employee?
+
+  @@index([companyId])
+  @@map("users")
+}
+
+// ---------------------------------------------------
+// DEPARTMENTS
+// ---------------------------------------------------
+
+model Department {
+  id         Int      @id @default(autoincrement())
+  companyId  Int      @map("company_id")
+  name       String
+  headId     Int?     @map("head_id") // FK to Employee, set after employees exist
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  head       Employee?  @relation("DepartmentHead", fields: [headId], references: [id])
+  employees  Employee[] @relation("EmployeeDepartment")
+
+  @@index([companyId])
+  @@map("departments")
+}
+
+// ---------------------------------------------------
+// EMPLOYEES (role-specific profile data, FK to User)
+// ---------------------------------------------------
+
+model Employee {
+  id                      Int             @id @default(autoincrement())
+  userId                  Int             @unique @map("user_id")
+  companyId               Int             @map("company_id")
+  departmentId            Int?            @map("department_id")
+  employeeCode            String?         @map("employee_code") // auto-generated, e.g. EMP001 — unique per company, not globally
+  firstName               String          @map("first_name")
+  lastName                String          @map("last_name")
+  dateOfBirth             DateTime?       @map("date_of_birth")
+  gender                  String?
+  maritalStatus           String?         @map("marital_status")
+  nationality             String?
+  address                 String?
+  phoneNumber             String?         @map("phone_number")
+  position                String?
+  employmentType          EmploymentType? @map("employment_type")
+  dateOfJoining           DateTime?       @map("date_of_joining")
+  reportsToId             Int?            @map("reports_to") // self-referencing FK, also powers org chart
+  status                  EmployeeStatus  @default(active)
+  emergencyContactName    String?         @map("emergency_contact_name")
+  emergencyContactPhone   String?         @map("emergency_contact_phone")
+  createdAt               DateTime        @default(now()) @map("created_at")
+  updatedAt               DateTime        @updatedAt @map("updated_at")
+
+  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department         Department?        @relation("EmployeeDepartment", fields: [departmentId], references: [id])
+  reportsTo          Employee?          @relation("EmployeeManager", fields: [reportsToId], references: [id])
+  directReports      Employee[]         @relation("EmployeeManager")
+  headOfDepartments  Department[]       @relation("DepartmentHead")
+  documents          EmployeeDocument[]
+
+  @@unique([companyId, employeeCode])
+  @@index([companyId])
+  @@index([departmentId])
+  @@index([reportsToId])
+  @@map("employees")
+}
+
+// ---------------------------------------------------
+// EMPLOYEE DOCUMENTS
+// ---------------------------------------------------
+
+model EmployeeDocument {
+  id            Int      @id @default(autoincrement())
+  employeeId    Int      @map("employee_id")
+  documentType  String?  @map("document_type") // ID, certificate, contract, etc.
+  fileUrl       String   @map("file_url")
+  uploadedAt    DateTime @default(now()) @map("uploaded_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("employee_documents")
+}
