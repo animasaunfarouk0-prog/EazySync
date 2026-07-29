@@ -1,10 +1,15 @@
-const express = require("express");
+import express from "express";
+import authRoutes from "../modules/auth/auth.routes.js";
+import companyRoutes from "../modules/companies/company.routes.js";
+import departmentRoutes from "../modules/departments/department.routes.js";
+import employeeRoutes from "../modules/employees/employee.routes.js";
+
 const router = express.Router();
 
 // abayomi — Foundation
-router.use("/auth", require("../modules/auth/auth.routes"));
-router.use("/companies", require("../modules/companies/company.routes"));
-router.use("/departments", require("../modules/departments/department.routes"));
-router.use("/employees", require("../modules/employees/employee.routes"));
+router.use("/auth", authRoutes);
+router.use("/companies", companyRoutes);
+router.use("/departments", departmentRoutes);
+router.use("/employees", employeeRoutes);
 
-module.exports = router;
+export default router;

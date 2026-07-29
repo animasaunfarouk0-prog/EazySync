@@ -1,10 +1,8 @@
-const express = require("express");
-const router = express.Router();
-
-const authController = require("./auth.controller");
-const authMiddleware = require("../../middlewares/auth.middleware");
-const verifyGoogleToken = require("./googleTokenVerifier.middleware");
-const {
+import express from "express";
+import * as authController from "./auth.controller.js";
+import authMiddleware from "../../middlewares/auth.middleware.js";
+import verifyGoogleToken from "./googleTokenVerifier.middleware.js";
+import {
   validate,
   registerSchema,
   loginSchema,
@@ -12,7 +10,9 @@ const {
   resetPasswordSchema,
   refreshSchema,
   googleAuthSchema,
-} = require("./auth.validator");
+} from "./auth.validator.js";
+
+const router = express.Router();
 
 router.post("/register", validate(registerSchema), authController.register);
 router.post("/login", validate(loginSchema), authController.login);
@@ -36,4 +36,4 @@ router.post(
 
 router.post("/logout", authMiddleware, authController.logout);
 
-module.exports = router;
+export default router;

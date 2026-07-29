@@ -1,6 +1,6 @@
-const companyService = require("./company.service");
+import * as companyService from "./company.service.js";
 
-async function create(req, res, next) {
+export async function create(req, res, next) {
   try {
     const result = await companyService.createCompany(
       req.user.userId,
@@ -12,7 +12,7 @@ async function create(req, res, next) {
   }
 }
 
-async function getById(req, res, next) {
+export async function getById(req, res, next) {
   try {
     const companyId = Number(req.params.id);
     const company = await companyService.getCompanyById(
@@ -25,7 +25,7 @@ async function getById(req, res, next) {
   }
 }
 
-async function update(req, res, next) {
+export async function update(req, res, next) {
   try {
     const companyId = Number(req.params.id);
     const company = await companyService.updateCompany(
@@ -38,5 +38,3 @@ async function update(req, res, next) {
     next(err);
   }
 }
-
-module.exports = { create, getById, update };

@@ -1,15 +1,15 @@
-const express = require("express");
-const router = express.Router();
-
-const companyController = require("./company.controller");
-const authMiddleware = require("../../middlewares/auth.middleware");
-const tenantMiddleware = require("../../middlewares/tenant.middleware");
-const { requireRole } = require("../../middlewares/rbac.middleware");
-const {
+import express from "express";
+import * as companyController from "./company.controller.js";
+import authMiddleware from "../../middlewares/auth.middleware.js";
+import tenantMiddleware from "../../middlewares/tenant.middleware.js";
+import { requireRole } from "../../middlewares/rbac.middleware.js";
+import {
   validate,
   createCompanySchema,
   updateCompanySchema,
-} = require("./company.validator");
+} from "./company.validator.js";
+
+const router = express.Router();
 
 router.post(
   "/",
@@ -36,4 +36,4 @@ router.patch(
   companyController.update
 );
 
-module.exports = router;
+export default router;

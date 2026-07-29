@@ -1,19 +1,21 @@
-const express = require("express");
-const router = express.Router();
+// src/modules/employees/employee.routes.js
 
-const employeeController = require("./employee.controller");
-const authMiddleware = require("../../middlewares/auth.middleware");
-const tenantMiddleware = require("../../middlewares/tenant.middleware");
-const {
+import express from "express";
+import * as employeeController from "./employee.controller.js";
+import authMiddleware from "../../middlewares/auth.middleware.js";
+import tenantMiddleware from "../../middlewares/tenant.middleware.js";
+import {
   requireRole,
   requireSelfOrRole,
-} = require("../../middlewares/rbac.middleware");
-const upload = require("../../config/multer");
-const {
+} from "../../middlewares/rbac.middleware.js";
+import upload from "../../config/multer.js";
+import {
   validate,
   validateUpdate,
   createEmployeeSchema,
-} = require("./employee.validator");
+} from "./employee.validator.js";
+
+const router = express.Router();
 
 router.use(authMiddleware, tenantMiddleware);
 
@@ -53,4 +55,4 @@ router.get(
   employeeController.listDocuments
 );
 
-module.exports = router;
+export default router;

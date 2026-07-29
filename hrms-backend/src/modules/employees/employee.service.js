@@ -1,4 +1,4 @@
-const prisma = require("../../config/prisma");
+import prisma from "../../config/prisma.js";
 
 async function generateEmployeeCode(companyId) {
   const lastEmployee = await prisma.employee.findFirst({
@@ -15,7 +15,10 @@ async function generateEmployeeCode(companyId) {
   return `EMP${String(nextNumber).padStart(3, "0")}`;
 }
 
-async function listEmployees(companyId, { departmentId, status, search } = {}) {
+export async function listEmployees(
+  companyId,
+  { departmentId, status, search } = {}
+) {
   return prisma.employee.findMany({
     where: {
       companyId,
@@ -37,9 +40,7 @@ async function listEmployees(companyId, { departmentId, status, search } = {}) {
   });
 }
 
-async function createEmployee(companyId, data) {
-  // Confirm the user exists, belongs to this company, and doesn't already
-  // have an employee record (User.employee is a 1-1 relation).
+export async function createEmployee(companyId, data) {
   const user = await prisma.user.findFirst({
     where: { id: data.userId, companyId },
     include: { employee: true },
@@ -67,7 +68,7 @@ async function createEmployee(companyId, data) {
   });
 }
 
-async function getEmployeeById(companyId, employeeId) {
+export async function getEmployeeById(companyId, employeeId) {
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
     include: {
@@ -86,7 +87,7 @@ async function getEmployeeById(companyId, employeeId) {
   return employee;
 }
 
-async function updateEmployee(companyId, employeeId, data) {
+export async function updateEmployee(companyId, employeeId, data) {
   const existing = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
   });
@@ -102,7 +103,7 @@ async function updateEmployee(companyId, employeeId, data) {
   });
 }
 
-async function deleteEmployee(companyId, employeeId) {
+export async function deleteEmployee(companyId, employeeId) {
   const existing = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
   });
@@ -115,7 +116,11 @@ async function deleteEmployee(companyId, employeeId) {
   await prisma.employee.delete({ where: { id: employeeId } });
 }
 
-async function addDocument(companyId, employeeId, { documentType, fileUrl }) {
+export async function addDocument(
+  companyId,
+  employeeId,
+  { documentType, fileUrl }
+) {
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
   });
@@ -130,7 +135,7 @@ async function addDocument(companyId, employeeId, { documentType, fileUrl }) {
   });
 }
 
-async function listDocuments(companyId, employeeId) {
+export async function listDocuments(companyId, employeeId) {
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
   });
@@ -145,13 +150,3 @@ async function listDocuments(companyId, employeeId) {
     orderBy: { uploadedAt: "desc" },
   });
 }
-
-module.exports = {
-  listEmployees,
-  createEmployee,
-  getEmployeeById,
-  updateEmployee,
-  deleteEmployee,
-  addDocument,
-  listDocuments,
-};

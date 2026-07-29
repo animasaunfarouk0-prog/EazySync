@@ -2,7 +2,7 @@
 // HRMS Backend — Prisma Schema
 // Owned by: Odusanya Abayomi (Foundation — Auth, Company, Employees)
 //
-// Scope: this file defines the tables Person 1 owns.
+// Scope: this file defines the tables Odusanya owns.
 // Other teammates' models (Job, Applicant, Interview, LeaveRequest,
 // Goal, PerformanceReview, Notification, AuditLog, etc.) should be
 // appended to this same schema file as they're built, since Prisma

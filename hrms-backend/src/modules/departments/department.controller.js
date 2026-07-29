@@ -1,6 +1,6 @@
-const departmentService = require("./department.service");
+import * as departmentService from "./department.service.js";
 
-async function list(req, res, next) {
+export async function list(req, res, next) {
   try {
     const departments = await departmentService.listDepartments(req.companyId);
     res.status(200).json(departments);
@@ -9,7 +9,7 @@ async function list(req, res, next) {
   }
 }
 
-async function create(req, res, next) {
+export async function create(req, res, next) {
   try {
     const department = await departmentService.createDepartment(
       req.companyId,
@@ -21,7 +21,7 @@ async function create(req, res, next) {
   }
 }
 
-async function update(req, res, next) {
+export async function update(req, res, next) {
   try {
     const departmentId = Number(req.params.id);
     const department = await departmentService.updateDepartment(
@@ -35,7 +35,7 @@ async function update(req, res, next) {
   }
 }
 
-async function remove(req, res, next) {
+export async function remove(req, res, next) {
   try {
     const departmentId = Number(req.params.id);
     await departmentService.deleteDepartment(req.companyId, departmentId);
@@ -44,5 +44,3 @@ async function remove(req, res, next) {
     next(err);
   }
 }
-
-module.exports = { list, create, update, remove };

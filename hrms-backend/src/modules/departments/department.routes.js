@@ -1,15 +1,15 @@
-const express = require("express");
-const router = express.Router();
-
-const departmentController = require("./department.controller");
-const authMiddleware = require("../../middlewares/auth.middleware");
-const tenantMiddleware = require("../../middlewares/tenant.middleware");
-const { requireRole } = require("../../middlewares/rbac.middleware");
-const {
+import express from "express";
+import * as departmentController from "./department.controller.js";
+import authMiddleware from "../../middlewares/auth.middleware.js";
+import tenantMiddleware from "../../middlewares/tenant.middleware.js";
+import { requireRole } from "../../middlewares/rbac.middleware.js";
+import {
   validate,
   createDepartmentSchema,
   updateDepartmentSchema,
-} = require("./department.validator");
+} from "./department.validator.js";
+
+const router = express.Router();
 
 router.use(authMiddleware, tenantMiddleware);
 
@@ -32,4 +32,4 @@ router.patch(
 );
 router.delete("/:id", requireRole(["hr_admin"]), departmentController.remove);
 
-module.exports = router;
+export default router;

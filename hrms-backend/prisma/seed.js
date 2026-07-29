@@ -1,11 +1,7 @@
-// HRMS Backend — Prisma Seed Script
-// Owned by: Abayomi (Foundation)
-
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcrypt");
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
 
 const prisma = new PrismaClient();
-
 const SALT_ROUNDS = 10;
 
 async function hash(password) {
@@ -69,7 +65,6 @@ async function main() {
   console.log("Seeding users + employees...");
   const defaultPassword = await hash("Password123!");
 
-  // Super Admin
   const superAdminUser = await prisma.user.create({
     data: {
       email: "superadmin@techsolutions.com",
@@ -94,7 +89,6 @@ async function main() {
     },
   });
 
-  // HR Admin
   const hrAdminUser = await prisma.user.create({
     data: {
       email: "hradmin@techsolutions.com",
@@ -119,13 +113,11 @@ async function main() {
     },
   });
 
-  // set Mary as head of HR department
   await prisma.department.update({
     where: { id: hr.id },
     data: { headId: hrAdminEmployee.id },
   });
 
-  // Manager
   const managerUser = await prisma.user.create({
     data: {
       email: "manager@techsolutions.com",
@@ -155,7 +147,6 @@ async function main() {
     data: { headId: managerEmployee.id },
   });
 
-  // Regular employees reporting to the manager
   const employeeSeeds = [
     {
       first: "Esther",
@@ -216,7 +207,6 @@ async function main() {
     });
   }
 
-  // A sample applicant user (no company yet — applies through public flow)
   await prisma.user.create({
     data: {
       email: "sarah.johnson@example.com",
@@ -228,7 +218,7 @@ async function main() {
   });
 
   console.log("Seed complete.");
-  console.log("---------------------------------------");
+
   console.log("Test accounts (all passwords: Password123!):");
   console.log("  super_admin: superadmin@techsolutions.com");
   console.log("  hr_admin:    hradmin@techsolutions.com");
@@ -237,7 +227,6 @@ async function main() {
   console.log(
     `  greenfield company id: ${greenfield.id} (empty, for multi-tenant isolation testing)`
   );
-  console.log("---------------------------------------");
 }
 
 main()

@@ -1,4 +1,4 @@
-function tenantMiddleware(req, res, next) {
+export default function tenantMiddleware(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: "Not authenticated" });
   }
@@ -20,5 +20,3 @@ function tenantMiddleware(req, res, next) {
   req.companyId = companyId;
   next();
 }
-
-module.exports = tenantMiddleware;

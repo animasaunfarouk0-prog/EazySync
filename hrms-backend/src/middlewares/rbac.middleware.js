@@ -1,4 +1,4 @@
-function requireRole(allowedRoles = []) {
+export function requireRole(allowedRoles = []) {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -16,7 +16,7 @@ function requireRole(allowedRoles = []) {
   };
 }
 
-function requireSelfOrRole(allowedRoles = [], paramKey = "id") {
+export function requireSelfOrRole(allowedRoles = [], paramKey = "id") {
   return (req, res, next) => {
     if (!req.user) {
       return res.status(401).json({ error: "Not authenticated" });
@@ -41,5 +41,3 @@ function requireSelfOrRole(allowedRoles = [], paramKey = "id") {
     next();
   };
 }
-
-module.exports = { requireRole, requireSelfOrRole };

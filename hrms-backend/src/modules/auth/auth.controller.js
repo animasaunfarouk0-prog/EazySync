@@ -1,6 +1,6 @@
-const authService = require("./auth.service");
+import * as authService from "./auth.service.js";
 
-async function register(req, res, next) {
+export async function register(req, res, next) {
   try {
     const result = await authService.register(req.body);
     res.status(201).json(result);
@@ -9,7 +9,7 @@ async function register(req, res, next) {
   }
 }
 
-async function login(req, res, next) {
+export async function login(req, res, next) {
   try {
     const result = await authService.login(req.body);
     res.status(200).json(result);
@@ -18,7 +18,7 @@ async function login(req, res, next) {
   }
 }
 
-async function logout(req, res, next) {
+export async function logout(req, res, next) {
   try {
     await authService.logout(req.user.userId);
     res.status(200).json({ message: "Logged out successfully" });
@@ -27,7 +27,7 @@ async function logout(req, res, next) {
   }
 }
 
-async function refresh(req, res, next) {
+export async function refresh(req, res, next) {
   try {
     const { refreshToken } = req.body;
     const result = await authService.refresh(refreshToken);
@@ -37,10 +37,9 @@ async function refresh(req, res, next) {
   }
 }
 
-async function forgotPassword(req, res, next) {
+export async function forgotPassword(req, res, next) {
   try {
     await authService.forgotPassword(req.body.email);
-
     res
       .status(200)
       .json({ message: "If that email exists, a reset link has been sent" });
@@ -49,7 +48,7 @@ async function forgotPassword(req, res, next) {
   }
 }
 
-async function resetPassword(req, res, next) {
+export async function resetPassword(req, res, next) {
   try {
     await authService.resetPassword(req.body);
     res.status(200).json({ message: "Password reset successfully" });
@@ -58,7 +57,7 @@ async function resetPassword(req, res, next) {
   }
 }
 
-async function googleAuth(req, res, next) {
+export async function googleAuth(req, res, next) {
   try {
     const result = await authService.googleAuth(req.googleProfile);
     res.status(200).json(result);
@@ -66,13 +65,3 @@ async function googleAuth(req, res, next) {
     next(err);
   }
 }
-
-module.exports = {
-  register,
-  login,
-  logout,
-  refresh,
-  forgotPassword,
-  resetPassword,
-  googleAuth,
-};

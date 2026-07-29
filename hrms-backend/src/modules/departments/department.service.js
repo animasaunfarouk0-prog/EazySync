@@ -1,6 +1,6 @@
-const prisma = require("../../config/prisma");
+import prisma from "../../config/prisma.js";
 
-async function listDepartments(companyId) {
+export async function listDepartments(companyId) {
   return prisma.department.findMany({
     where: { companyId },
     include: {
@@ -11,13 +11,13 @@ async function listDepartments(companyId) {
   });
 }
 
-async function createDepartment(companyId, data) {
+export async function createDepartment(companyId, data) {
   return prisma.department.create({
     data: { ...data, companyId },
   });
 }
 
-async function updateDepartment(companyId, departmentId, data) {
+export async function updateDepartment(companyId, departmentId, data) {
   const existing = await prisma.department.findFirst({
     where: { id: departmentId, companyId },
   });
@@ -34,7 +34,7 @@ async function updateDepartment(companyId, departmentId, data) {
   });
 }
 
-async function deleteDepartment(companyId, departmentId) {
+export async function deleteDepartment(companyId, departmentId) {
   const existing = await prisma.department.findFirst({
     where: { id: departmentId, companyId },
   });
@@ -47,10 +47,3 @@ async function deleteDepartment(companyId, departmentId) {
 
   await prisma.department.delete({ where: { id: departmentId } });
 }
-
-module.exports = {
-  listDepartments,
-  createDepartment,
-  updateDepartment,
-  deleteDepartment,
-};

@@ -1,7 +1,6 @@
-require("dotenv").config();
-
-const app = require("./app");
-const { PrismaClient } = require("@prisma/client");
+import "dotenv/config";
+import app from "./app.js";
+import { PrismaClient } from "@prisma/client";
 
 const PORT = process.env.PORT || 5000;
 
@@ -23,7 +22,6 @@ async function start() {
 
 start();
 
-// Graceful shutdown
 process.on("SIGINT", async () => {
   await prisma.$disconnect();
   process.exit(0);

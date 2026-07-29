@@ -1,6 +1,6 @@
-const Joi = require("joi");
+import Joi from "joi";
 
-const createCompanySchema = Joi.object({
+export const createCompanySchema = Joi.object({
   name: Joi.string().min(1).required(),
   registrationNumber: Joi.string().optional().allow(null, ""),
   industry: Joi.string().optional().allow(null, ""),
@@ -10,7 +10,7 @@ const createCompanySchema = Joi.object({
   address: Joi.string().optional().allow(null, ""),
 });
 
-const updateCompanySchema = Joi.object({
+export const updateCompanySchema = Joi.object({
   name: Joi.string().min(1).optional(),
   registrationNumber: Joi.string().optional().allow(null, ""),
   industry: Joi.string().optional().allow(null, ""),
@@ -18,9 +18,9 @@ const updateCompanySchema = Joi.object({
   email: Joi.string().email().optional().allow(null, ""),
   website: Joi.string().optional().allow(null, ""),
   address: Joi.string().optional().allow(null, ""),
-}).min(1); // at least one field must be provided on update
+}).min(1);
 
-function validate(schema) {
+export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -33,5 +33,3 @@ function validate(schema) {
     next();
   };
 }
-
-module.exports = { createCompanySchema, updateCompanySchema, validate };

@@ -1,14 +1,15 @@
-const bcrypt = require("bcrypt");
-const crypto = require("crypto");
-const prisma = require("../../config/prisma");
-const {
+import bcrypt from "bcrypt";
+import crypto from "crypto";
+import prisma from "../../config/prisma.js";
+import {
   signAccessToken,
   signRefreshToken,
   verifyRefreshToken,
-} = require("../../utils/jwt");
+} from "../../utils/jwt.js";
 
 const SALT_ROUNDS = 10;
 const RESET_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
+
 async function getUserWithRelations(userId) {
   return prisma.user.findUnique({
     where: { id: userId },
@@ -16,7 +17,7 @@ async function getUserWithRelations(userId) {
   });
 }
 
-async function register({
+export async function register({
   email,
   password,
   firstName,
@@ -61,7 +62,7 @@ async function register({
   return { user: sanitizeUser(fullUser), accessToken, refreshToken };
 }
 
-async function login({ email, password }) {
+export async function login({ email, password }) {
   const user = await prisma.user.findUnique({
     where: { email },
     include: { role: true, employee: true },
@@ -91,14 +92,14 @@ async function login({ email, password }) {
   return { user: sanitizeUser(user), accessToken, refreshToken };
 }
 
-async function logout(userId) {
+export async function logout(userId) {
   await prisma.user.update({
     where: { id: userId },
     data: { refreshToken: null },
   });
 }
 
-async function refresh(refreshToken) {
+export async function refresh(refreshToken) {
   let decoded;
   try {
     decoded = verifyRefreshToken(refreshToken);
@@ -113,8 +114,6 @@ async function refresh(refreshToken) {
     include: { role: true, employee: true },
   });
 
-  // Reject if the token doesn't match what's stored — covers the case
-  // where a refresh token was already used/rotated or the user logged out.
   if (!user || user.refreshToken !== refreshToken) {
     const err = new Error("Refresh token no longer valid");
     err.status = 401;
@@ -132,11 +131,9 @@ async function refresh(refreshToken) {
   return { accessToken: newAccessToken, refreshToken: newRefreshToken };
 }
 
-async function forgotPassword(email) {
+export async function forgotPassword(email) {
   const user = await prisma.user.findUnique({ where: { email } });
 
-  // Always respond as if it succeeded, even if the email isn't found —
-  // prevents leaking which emails are registered.
   if (!user) return;
 
   const resetToken = crypto.randomBytes(32).toString("hex");
@@ -147,14 +144,12 @@ async function forgotPassword(email) {
     data: { resetToken, resetTokenExpires },
   });
 
-  // TODO: send resetToken via email (Nodemailer) once notification
-  // service exists. For now, log it so it's usable in dev/testing.
   console.log(`[DEV ONLY] Password reset token for ${email}: ${resetToken}`);
 
   return resetToken;
 }
 
-async function resetPassword({ token, newPassword }) {
+export async function resetPassword({ token, newPassword }) {
   const user = await prisma.user.findFirst({
     where: {
       resetToken: token,
@@ -176,14 +171,12 @@ async function resetPassword({ token, newPassword }) {
       passwordHash,
       resetToken: null,
       resetTokenExpires: null,
-      refreshToken: null, // force re-login on all devices after password change
+      refreshToken: null,
     },
   });
 }
 
-// Google OAuth — expects an ID token already verified client-side or via
-// google-auth-library. googleProfile = { googleId, email, firstName, lastName }
-async function googleAuth(googleProfile) {
+export async function googleAuth(googleProfile) {
   const { googleId, email } = googleProfile;
 
   let user = await prisma.user.findUnique({
@@ -192,8 +185,6 @@ async function googleAuth(googleProfile) {
   });
 
   if (!user) {
-    // If an account with this email already exists (registered via
-    // password), link the Google ID to it instead of creating a duplicate.
     user = await prisma.user.findUnique({ where: { email } });
 
     if (user) {
@@ -211,7 +202,7 @@ async function googleAuth(googleProfile) {
           email,
           googleId,
           isVerified: true,
-          roleId: applicantRole.id, // default role for a brand-new Google sign-in
+          roleId: applicantRole.id,
         },
         include: { role: true, employee: true },
       });
@@ -229,19 +220,8 @@ async function googleAuth(googleProfile) {
   return { user: sanitizeUser(user), accessToken, refreshToken };
 }
 
-// Never return passwordHash/refreshToken/resetToken to the client
 function sanitizeUser(user) {
   const { passwordHash, refreshToken, resetToken, resetTokenExpires, ...safe } =
     user;
   return safe;
 }
-
-module.exports = {
-  register,
-  login,
-  logout,
-  refresh,
-  forgotPassword,
-  resetPassword,
-  googleAuth,
-};

@@ -1,16 +1,18 @@
-const Joi = require("joi");
+// src/modules/departments/department.validator.js
 
-const createDepartmentSchema = Joi.object({
+import Joi from "joi";
+
+export const createDepartmentSchema = Joi.object({
   name: Joi.string().min(1).required(),
   headId: Joi.number().integer().optional().allow(null),
 });
 
-const updateDepartmentSchema = Joi.object({
+export const updateDepartmentSchema = Joi.object({
   name: Joi.string().min(1).optional(),
   headId: Joi.number().integer().optional().allow(null),
 }).min(1);
 
-function validate(schema) {
+export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -23,5 +25,3 @@ function validate(schema) {
     next();
   };
 }
-
-module.exports = { createDepartmentSchema, updateDepartmentSchema, validate };

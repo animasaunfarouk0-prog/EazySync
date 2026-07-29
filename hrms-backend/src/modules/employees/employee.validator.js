@@ -1,6 +1,6 @@
-const Joi = require("joi");
+import Joi from "joi";
 
-const createEmployeeSchema = Joi.object({
+export const createEmployeeSchema = Joi.object({
   userId: Joi.number().integer().required(),
   departmentId: Joi.number().integer().optional().allow(null),
   firstName: Joi.string().min(1).required(),
@@ -21,7 +21,7 @@ const createEmployeeSchema = Joi.object({
   emergencyContactPhone: Joi.string().optional().allow(null, ""),
 });
 
-const updateEmployeeSchema = Joi.object({
+export const updateEmployeeSchema = Joi.object({
   departmentId: Joi.number().integer().optional().allow(null),
   firstName: Joi.string().min(1).optional(),
   lastName: Joi.string().min(1).optional(),
@@ -42,14 +42,14 @@ const updateEmployeeSchema = Joi.object({
   emergencyContactPhone: Joi.string().optional().allow(null, ""),
 }).min(1);
 
-const selfUpdateEmployeeSchema = Joi.object({
+export const selfUpdateEmployeeSchema = Joi.object({
   phoneNumber: Joi.string().optional().allow(null, ""),
   address: Joi.string().optional().allow(null, ""),
   emergencyContactName: Joi.string().optional().allow(null, ""),
   emergencyContactPhone: Joi.string().optional().allow(null, ""),
 }).min(1);
 
-function validate(schema) {
+export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -63,19 +63,9 @@ function validate(schema) {
   };
 }
 
-// Picks the right schema at request time based on req.isSelfAccess, which
-// rbac.middleware's requireSelfOrRole sets earlier in the chain.
-function validateUpdate(req, res, next) {
+export function validateUpdate(req, res, next) {
   const schema = req.isSelfAccess
     ? selfUpdateEmployeeSchema
     : updateEmployeeSchema;
   return validate(schema)(req, res, next);
 }
-
-module.exports = {
-  createEmployeeSchema,
-  updateEmployeeSchema,
-  selfUpdateEmployeeSchema,
-  validate,
-  validateUpdate,
-};

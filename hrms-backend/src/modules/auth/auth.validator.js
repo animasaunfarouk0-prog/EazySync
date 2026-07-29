@@ -1,6 +1,6 @@
-const Joi = require("joi");
+import Joi from "joi";
 
-const registerSchema = Joi.object({
+export const registerSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().min(8).required(),
   firstName: Joi.string().min(1).required(),
@@ -11,29 +11,29 @@ const registerSchema = Joi.object({
     .required(),
 });
 
-const loginSchema = Joi.object({
+export const loginSchema = Joi.object({
   email: Joi.string().email().required(),
   password: Joi.string().required(),
 });
 
-const forgotPasswordSchema = Joi.object({
+export const forgotPasswordSchema = Joi.object({
   email: Joi.string().email().required(),
 });
 
-const resetPasswordSchema = Joi.object({
+export const resetPasswordSchema = Joi.object({
   token: Joi.string().required(),
   newPassword: Joi.string().min(8).required(),
 });
 
-const refreshSchema = Joi.object({
+export const refreshSchema = Joi.object({
   refreshToken: Joi.string().required(),
 });
 
-const googleAuthSchema = Joi.object({
+export const googleAuthSchema = Joi.object({
   idToken: Joi.string().required(),
 });
 
-function validate(schema) {
+export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });
     if (error) {
@@ -46,13 +46,3 @@ function validate(schema) {
     next();
   };
 }
-
-module.exports = {
-  registerSchema,
-  loginSchema,
-  forgotPasswordSchema,
-  resetPasswordSchema,
-  refreshSchema,
-  googleAuthSchema,
-  validate,
-};
