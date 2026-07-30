@@ -11,11 +11,11 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------
@@ -43,6 +43,34 @@ enum EmployeeStatus {
   exited
 }
 
+enum JobStatus {
+  draft
+  open
+  on_hold
+  closed
+}
+
+enum ApplicationStatus {
+  new
+  in_review
+  shortlisted
+  interviewed
+  offered
+  hired
+  rejected
+}
+
+enum InterviewMode {
+  onsite
+  remote
+  phone
+}
+
+enum InterviewStatus {
+  scheduled
+  completed
+  cancelled
+  rescheduled
 enum LeaveRequestStatus {
   pending
   approved
@@ -102,6 +130,7 @@ model Company {
   users        User[]
   departments  Department[]
   employees    Employee[]
+  jobs         Job[]
   leaveTypes   LeaveType[]
 
   @@map("companies")
@@ -126,18 +155,19 @@ model Role {
 
 model User {
   id                  Int       @id @default(autoincrement())
-  companyId           Int?      @map("company_id") // nullable: applicants aren't tied to a company until hired
+  companyId           Int?      @map("company_id")
   roleId              Int       @map("role_id")
   email               String    @unique
-  passwordHash        String?   @map("password_hash") // nullable: OAuth-only users
+  passwordHash        String?   @map("password_hash")
   googleId            String?   @unique @map("google_id")
   isVerified          Boolean   @default(false) @map("is_verified")
   resetToken          String?   @map("reset_token")
-  resetTokenExpires    DateTime? @map("reset_token_expires")
+  resetTokenExpires   DateTime? @map("reset_token_expires")
   refreshToken        String?   @map("refresh_token")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
-
+  
+  applicant      Applicant?
   company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   role           Role           @relation(fields: [roleId], references: [id])
   employee       Employee?
@@ -156,12 +186,13 @@ model Department {
   id         Int      @id @default(autoincrement())
   companyId  Int      @map("company_id")
   name       String
-  headId     Int?     @map("head_id") // FK to Employee, set after employees exist
+  headId     Int?     @map("head_id")
   createdAt  DateTime @default(now()) @map("created_at")
 
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   head       Employee?  @relation("DepartmentHead", fields: [headId], references: [id])
   employees  Employee[] @relation("EmployeeDepartment")
+  jobs       Job[]
   goals      Goal[]
 
   @@index([companyId])
@@ -177,7 +208,7 @@ model Employee {
   userId                  Int             @unique @map("user_id")
   companyId               Int             @map("company_id")
   departmentId            Int?            @map("department_id")
-  employeeCode            String?         @map("employee_code") // auto-generated, e.g. EMP001 — unique per company, not globally
+  employeeCode            String?         @map("employee_code")
   firstName               String          @map("first_name")
   lastName                String          @map("last_name")
   dateOfBirth             DateTime?       @map("date_of_birth")
@@ -189,20 +220,22 @@ model Employee {
   position                String?
   employmentType          EmploymentType? @map("employment_type")
   dateOfJoining           DateTime?       @map("date_of_joining")
-  reportsToId             Int?            @map("reports_to") // self-referencing FK, also powers org chart
+  reportsToId             Int?            @map("reports_to")
   status                  EmployeeStatus  @default(active)
   emergencyContactName    String?         @map("emergency_contact_name")
   emergencyContactPhone   String?         @map("emergency_contact_phone")
   createdAt               DateTime        @default(now()) @map("created_at")
   updatedAt               DateTime        @updatedAt @map("updated_at")
 
-  user               User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  company            Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  department         Department?        @relation("EmployeeDepartment", fields: [departmentId], references: [id])
-  reportsTo          Employee?          @relation("EmployeeManager", fields: [reportsToId], references: [id])
-  directReports      Employee[]         @relation("EmployeeManager")
-  headOfDepartments  Department[]       @relation("DepartmentHead")
-  documents          EmployeeDocument[]
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company             Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department          Department?        @relation("EmployeeDepartment", fields: [departmentId], references: [id])
+  reportsTo           Employee?          @relation("EmployeeManager", fields: [reportsToId], references: [id])
+  directReports       Employee[]         @relation("EmployeeManager")
+  headOfDepartments   Department[]       @relation("DepartmentHead")
+  documents           EmployeeDocument[]
+  jobsPosted          Job[]
+  interviewsConducted Interview[]
 
   // --- Person 3: Leave ---
   leaveRequests        LeaveRequest[]         @relation("EmployeeLeaveRequests")
@@ -235,7 +268,7 @@ model Employee {
 model EmployeeDocument {
   id            Int      @id @default(autoincrement())
   employeeId    Int      @map("employee_id")
-  documentType  String?  @map("document_type") // ID, certificate, contract, etc.
+  documentType  String?  @map("document_type")
   fileUrl       String   @map("file_url")
   uploadedAt    DateTime @default(now()) @map("uploaded_at")
 
@@ -245,6 +278,84 @@ model EmployeeDocument {
   @@map("employee_documents")
 }
 
+// ---------------------------------------------------
+// JOBS
+// ---------------------------------------------------
+
+model Job {
+  id             Int             @id @default(autoincrement())
+  companyId      Int             @map("company_id")
+  departmentId   Int?            @map("department_id")
+  postedById     Int?            @map("posted_by")
+  jobCode        String?         @map("job_code")
+  title          String
+  description    String?
+  requirements   String?
+  location       String?
+  employmentType EmploymentType? @map("employment_type")
+  status         JobStatus       @default(draft)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  company     Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  department  Department? @relation(fields: [departmentId], references: [id])
+  postedBy    Employee?   @relation(fields: [postedById], references: [id])
+  applicants  Applicant[]
+
+  @@unique([companyId, jobCode])
+  @@index([companyId])
+  @@index([departmentId])
+  @@map("jobs")
+}
+
+// ---------------------------------------------------
+// APPLICANTS
+// ---------------------------------------------------
+
+model Applicant {
+  id           Int               @id @default(autoincrement())
+  jobId        Int               @map("job_id")
+  userId       Int?              @unique @map("user_id")
+  firstName    String            @map("first_name")
+  lastName     String            @map("last_name")
+  email        String
+  phoneNumber  String?           @map("phone_number")
+  resumeUrl    String?           @map("resume_url")
+  coverLetter  String?           @map("cover_letter")
+  status       ApplicationStatus @default(new)
+  appliedAt    DateTime          @default(now()) @map("applied_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
+
+  job        Job         @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  user       User?       @relation(fields: [userId], references: [id])
+  interviews Interview[]
+
+  @@index([jobId])
+  @@map("applicants")
+}
+
+// ---------------------------------------------------
+// INTERVIEWS
+// ---------------------------------------------------
+
+model Interview {
+  id            Int             @id @default(autoincrement())
+  applicantId   Int             @map("applicant_id")
+  interviewerId Int?            @map("interviewer_id")
+  scheduledAt   DateTime        @map("scheduled_at")
+  mode          InterviewMode   @default(onsite)
+  status        InterviewStatus @default(scheduled)
+  feedback      String?
+  rating        Int?
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  applicant   Applicant @relation(fields: [applicantId], references: [id], onDelete: Cascade)
+  interviewer Employee? @relation(fields: [interviewerId], references: [id])
+
+  @@index([applicantId])
+  @@map("interviews")
+}
 // ===================================================
 // PERSON 3 — LEAVE MANAGEMENT, NOTIFICATIONS, AUDIT
 // ===================================================
