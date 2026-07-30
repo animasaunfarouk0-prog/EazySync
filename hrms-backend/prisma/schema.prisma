@@ -420,6 +420,7 @@ model ReviewGoalRating {
   review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
   goal   Goal              @relation(fields: [goalId], references: [id], onDelete: Cascade)
 
+  @@unique([reviewId, goalId])
   @@index([reviewId])
   @@map("review_goal_ratings")
 }
