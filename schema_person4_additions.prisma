@@ -1,0 +1,138 @@
+// ===================================================
+// ADDITIONS TO schema.prisma — Person 4 (Performance & Analytics)
+// Append these below the existing EmployeeDocument model.
+// Do NOT replace the existing file — merge these in alongside it.
+// ===================================================
+
+// ---------------------------------------------------
+// NEW ENUMS — add near the top with the existing enums
+// ---------------------------------------------------
+
+enum GoalStatus {
+  on_track
+  at_risk
+  completed
+  overdue
+}
+
+enum ReviewStatus {
+  in_progress
+  completed
+  upcoming
+  archived
+}
+
+enum FeedbackStatus {
+  draft
+  submitted
+}
+
+// ---------------------------------------------------
+// GOALS
+// ---------------------------------------------------
+
+model Goal {
+  id             Int        @id @default(autoincrement())
+  employeeId     Int        @map("employee_id")       // whose goal this is
+  goalOwnerId    Int?       @map("goal_owner_id")      // manager/hr_admin who set it, if different
+  departmentId   Int?       @map("department_id")
+  title          String
+  category       String?
+  description    String?
+  weight         Decimal?   @db.Decimal(5, 2)          // e.g. 40.00 (%)
+  dueDate        DateTime?  @map("due_date")
+  status         GoalStatus @default(on_track)
+  progress       Decimal    @default(0) @db.Decimal(5, 2)
+  year           Int
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  employee       Employee   @relation("EmployeeGoals", fields: [employeeId], references: [id], onDelete: Cascade)
+  goalOwner      Employee?  @relation("GoalOwner", fields: [goalOwnerId], references: [id])
+  department     Department? @relation(fields: [departmentId], references: [id])
+  reviewRatings  ReviewGoalRating[]
+
+  @@index([employeeId])
+  @@index([year])
+  @@map("goals")
+}
+
+// ---------------------------------------------------
+// PERFORMANCE REVIEWS
+// ---------------------------------------------------
+
+model PerformanceReview {
+  id                    Int            @id @default(autoincrement())
+  employeeId            Int            @map("employee_id")
+  reviewerId             Int            @map("reviewer_id")   // manager conducting the review
+  reviewType             String?        @map("review_type")   // Mid Year, Annual, Probation
+  reviewPeriodStart      DateTime?      @map("review_period_start")
+  reviewPeriodEnd        DateTime?      @map("review_period_end")
+  status                 ReviewStatus   @default(in_progress)
+
+  // Controls employee visibility — an employee can ONLY see this review
+  // once feedbackStatus is 'submitted'. While 'draft', only the reviewer
+  // (manager) and hr_admin can see it. Enforced in the service layer, not
+  // just here — see performance.service.js guard on getReviewById.
+  feedbackStatus         FeedbackStatus @default(draft) @map("feedback_status")
+
+  overallRating           Decimal?       @db.Decimal(3, 1) @map("overall_rating")
+  strengths               String?
+  areasForImprovement     String?        @map("areas_for_improvement")
+  additionalComments      String?        @map("additional_comments")
+  submittedAt             DateTime?      @map("submitted_at")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  updatedAt               DateTime       @updatedAt @map("updated_at")
+
+  employee                Employee               @relation("EmployeeReviews", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer                Employee               @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  goalRatings             ReviewGoalRating[]
+  competencyRatings       ReviewCompetencyRating[]
+
+  @@index([employeeId])
+  @@index([reviewerId])
+  @@map("performance_reviews")
+}
+
+model ReviewGoalRating {
+  id               Int      @id @default(autoincrement())
+  reviewId         Int      @map("review_id")
+  goalId           Int      @map("goal_id")
+  employeeRating   Decimal? @db.Decimal(3, 1) @map("employee_rating")
+  reviewerRating   Decimal? @db.Decimal(3, 1) @map("reviewer_rating")
+  score            Decimal? @db.Decimal(4, 2)
+
+  review           PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  goal             Goal              @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_goal_ratings")
+}
+
+model ReviewCompetencyRating {
+  id               Int      @id @default(autoincrement())
+  reviewId         Int      @map("review_id")
+  competencyName   String   @map("competency_name")   // Leadership, Communication, etc.
+  rating           Decimal? @db.Decimal(3, 1)
+
+  review           PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_competency_ratings")
+}
+
+// ===================================================
+// REQUIRED CHANGE TO THE EXISTING Employee MODEL
+// ===================================================
+// The Employee model already exists in schema.prisma. Add these 4 lines
+// to its list of relations (do not duplicate the model — just add these
+// fields inside the existing `model Employee { ... }` block):
+//
+//   goals              Goal[]              @relation("EmployeeGoals")
+//   goalsOwned         Goal[]              @relation("GoalOwner")
+//   reviewsReceived    PerformanceReview[] @relation("EmployeeReviews")
+//   reviewsConducted   PerformanceReview[] @relation("ReviewerReviews")
+//
+// Also add this one line inside the existing `model Department { ... }` block:
+//
+//   goals              Goal[]
