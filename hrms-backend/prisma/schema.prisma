@@ -1,13 +1,12 @@
 // ===================================================
-// HRMS Backend — Prisma Schema
-// Owned by: Odusanya Abayomi (Foundation — Auth, Company, Employees)
+// HRMS Backend — Prisma Schema (Merged)
+// Person 1 (Foundation): Odusanya Abayomi
+// Person 3 (Leave, Notifications, Audit)
+// Person 4 (Goals, Performance Reviews): Odusanya Abayomi
 //
-// Scope: this file defines the tables Odusanya owns.
-// Other teammates' models (Job, Applicant, Interview, LeaveRequest,
-// Goal, PerformanceReview, Notification, AuditLog, etc.) should be
-// appended to this same schema file as they're built, since Prisma
-// requires a single schema.prisma per project. Coordinate merges
-// via PRs rather than everyone editing this file at once.
+// Recruitment models (Job, Applicant, Interview — Person 2) are NOT yet
+// merged here. Coordinate with Person 2 before they add theirs — same
+// single-file rule applies.
 // ===================================================
 
 generator client {
@@ -44,6 +43,46 @@ enum EmployeeStatus {
   exited
 }
 
+enum LeaveRequestStatus {
+  pending
+  approved
+  rejected
+  cancelled
+  expired
+}
+
+enum GoalStatus {
+  on_track
+  at_risk
+  completed
+  overdue
+}
+
+enum ReviewStatus {
+  in_progress
+  completed
+  upcoming
+  archived
+}
+
+enum FeedbackStatus {
+  draft
+  submitted
+}
+
+enum PayslipStatus {
+  generated
+  paid
+}
+
+enum AttendanceStatus {
+  present
+  absent
+  late
+  weekly_off
+  on_leave
+}
+
 // ---------------------------------------------------
 // COMPANIES (multi-tenancy root)
 // ---------------------------------------------------
@@ -63,6 +102,7 @@ model Company {
   users        User[]
   departments  Department[]
   employees    Employee[]
+  leaveTypes   LeaveType[]
 
   @@map("companies")
 }
@@ -98,9 +138,11 @@ model User {
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
 
-  company   Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  role      Role      @relation(fields: [roleId], references: [id])
-  employee  Employee?
+  company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  role           Role           @relation(fields: [roleId], references: [id])
+  employee       Employee?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
 
   @@index([companyId])
   @@map("users")
@@ -120,6 +162,7 @@ model Department {
   company    Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
   head       Employee?  @relation("DepartmentHead", fields: [headId], references: [id])
   employees  Employee[] @relation("EmployeeDepartment")
+  goals      Goal[]
 
   @@index([companyId])
   @@map("departments")
@@ -161,6 +204,23 @@ model Employee {
   headOfDepartments  Department[]       @relation("DepartmentHead")
   documents          EmployeeDocument[]
 
+  // --- Person 3: Leave ---
+  leaveRequests        LeaveRequest[]         @relation("EmployeeLeaveRequests")
+  leaveApprovalsGiven  LeaveRequest[]         @relation("LeaveApprover")
+  leaveBalances        LeaveBalance[]
+  leaveHistoryActions  LeaveApprovalHistory[] @relation("LeaveHistoryActor")
+
+  // --- Person 4: Goals & Performance ---
+  goals              Goal[]              @relation("EmployeeGoals")
+  goalsOwned         Goal[]              @relation("GoalOwner")
+  reviewsReceived    PerformanceReview[] @relation("EmployeeReviews")
+  reviewsConducted   PerformanceReview[] @relation("ReviewerReviews")
+
+  // --- Payroll & Attendance ---
+  salaryStructures   SalaryStructure[]
+  payslips           Payslip[]
+  attendanceRecords  AttendanceRecord[]
+
   @@unique([companyId, employeeCode])
   @@index([companyId])
   @@index([departmentId])
@@ -183,4 +243,264 @@ model EmployeeDocument {
 
   @@index([employeeId])
   @@map("employee_documents")
+}
+
+// ===================================================
+// PERSON 3 — LEAVE MANAGEMENT, NOTIFICATIONS, AUDIT
+// ===================================================
+
+model LeaveType {
+  id          Int      @id @default(autoincrement())
+  companyId   Int      @map("company_id")
+  name        String                                   // Annual, Sick, Maternity, Study, Other
+  defaultDays Decimal? @db.Decimal(5, 1) @map("default_days")
+
+  company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  balances LeaveBalance[]
+  requests LeaveRequest[]
+
+  @@index([companyId])
+  @@map("leave_types")
+}
+
+model LeaveBalance {
+  id          Int     @id @default(autoincrement())
+  employeeId  Int     @map("employee_id")
+  leaveTypeId Int     @map("leave_type_id")
+  year        Int
+  totalDays   Decimal @db.Decimal(5, 1) @map("total_days")
+  usedDays    Decimal @default(0) @db.Decimal(5, 1) @map("used_days")
+  pendingDays Decimal @default(0) @db.Decimal(5, 1) @map("pending_days")
+
+  employee  Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType LeaveType @relation(fields: [leaveTypeId], references: [id])
+
+  @@unique([employeeId, leaveTypeId, year])
+  @@index([employeeId])
+  @@map("leave_balances")
+}
+
+model LeaveRequest {
+  id              Int                 @id @default(autoincrement())
+  employeeId      Int                 @map("employee_id")
+  leaveTypeId     Int                 @map("leave_type_id")
+  startDate       DateTime            @map("start_date")
+  endDate         DateTime            @map("end_date")
+  totalDays       Decimal?            @db.Decimal(5, 1) @map("total_days")
+  reason          String?
+  attachmentUrl   String?             @map("attachment_url")
+  status          LeaveRequestStatus  @default(pending)
+  approverId      Int?                @map("approver_id")
+  approvalComment String?             @map("approval_comment")
+  submittedAt     DateTime            @default(now()) @map("submitted_at")
+  decidedAt       DateTime?           @map("decided_at")
+
+  employee        Employee               @relation("EmployeeLeaveRequests", fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType        LeaveType              @relation(fields: [leaveTypeId], references: [id])
+  approver         Employee?              @relation("LeaveApprover", fields: [approverId], references: [id])
+  approvalHistory  LeaveApprovalHistory[]
+
+  @@index([employeeId])
+  @@map("leave_requests")
+}
+
+model LeaveApprovalHistory {
+  id             Int      @id @default(autoincrement())
+  leaveRequestId Int      @map("leave_request_id")
+  actorId        Int?     @map("actor_id")
+  action         String                                 // submitted, approved, rejected, cancelled
+  comment        String?
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  actor        Employee?    @relation("LeaveHistoryActor", fields: [actorId], references: [id])
+
+  @@index([leaveRequestId])
+  @@map("leave_approval_history")
+}
+
+model Notification {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  type              String?                              // leave_request, applicant, review_reminder, system
+  title             String?
+  message           String?
+  isRead            Boolean  @default(false) @map("is_read")
+  isImportant       Boolean  @default(false) @map("is_important")
+  relatedEntityType String?  @map("related_entity_type")
+  relatedEntityId   Int?     @map("related_entity_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    Int?     @map("user_id")
+  action    String?                                       // e.g. "created employee", "approved leave"
+  module    String?
+  details   String?
+  ipAddress String?  @map("ip_address")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@map("audit_logs")
+}
+
+// ===================================================
+// PERSON 4 — GOALS & PERFORMANCE REVIEWS
+// ===================================================
+
+model Goal {
+  id            Int        @id @default(autoincrement())
+  employeeId    Int        @map("employee_id")
+  goalOwnerId   Int?       @map("goal_owner_id")
+  departmentId  Int?       @map("department_id")
+  title         String
+  category      String?
+  description   String?
+  weight        Decimal?   @db.Decimal(5, 2)
+  dueDate       DateTime?  @map("due_date")
+  status        GoalStatus @default(on_track)
+  progress      Decimal    @default(0) @db.Decimal(5, 2)
+  year          Int
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  employee      Employee            @relation("EmployeeGoals", fields: [employeeId], references: [id], onDelete: Cascade)
+  goalOwner     Employee?           @relation("GoalOwner", fields: [goalOwnerId], references: [id])
+  department    Department?         @relation(fields: [departmentId], references: [id])
+  reviewRatings ReviewGoalRating[]
+
+  @@index([employeeId])
+  @@index([year])
+  @@map("goals")
+}
+
+model PerformanceReview {
+  id                    Int            @id @default(autoincrement())
+  employeeId            Int            @map("employee_id")
+  reviewerId            Int            @map("reviewer_id")
+  reviewType            String?        @map("review_type")
+  reviewPeriodStart     DateTime?      @map("review_period_start")
+  reviewPeriodEnd       DateTime?      @map("review_period_end")
+  status                ReviewStatus   @default(in_progress)
+  feedbackStatus        FeedbackStatus @default(draft) @map("feedback_status")
+  overallRating         Decimal?       @db.Decimal(3, 1) @map("overall_rating")
+  strengths             String?
+  areasForImprovement   String?        @map("areas_for_improvement")
+  additionalComments    String?        @map("additional_comments")
+  submittedAt           DateTime?      @map("submitted_at")
+  createdAt             DateTime       @default(now()) @map("created_at")
+  updatedAt             DateTime       @updatedAt @map("updated_at")
+
+  employee          Employee                 @relation("EmployeeReviews", fields: [employeeId], references: [id], onDelete: Cascade)
+  reviewer          Employee                 @relation("ReviewerReviews", fields: [reviewerId], references: [id])
+  goalRatings       ReviewGoalRating[]
+  competencyRatings ReviewCompetencyRating[]
+
+  @@index([employeeId])
+  @@index([reviewerId])
+  @@map("performance_reviews")
+}
+
+model ReviewGoalRating {
+  id             Int      @id @default(autoincrement())
+  reviewId       Int      @map("review_id")
+  goalId         Int      @map("goal_id")
+  employeeRating Decimal? @db.Decimal(3, 1) @map("employee_rating")
+  reviewerRating Decimal? @db.Decimal(3, 1) @map("reviewer_rating")
+  score          Decimal? @db.Decimal(4, 2)
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  goal   Goal              @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_goal_ratings")
+}
+
+model ReviewCompetencyRating {
+  id             Int      @id @default(autoincrement())
+  reviewId       Int      @map("review_id")
+  competencyName String   @map("competency_name")
+  rating         Decimal? @db.Decimal(3, 1)
+
+  review PerformanceReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+
+  @@index([reviewId])
+  @@map("review_competency_ratings")
+}
+
+// ===================================================
+// PAYROLL
+// Simplified fixed-percentage tax/pension/NHF for MVP — not a real
+// Nigerian tax engine. Documented assumption, not a bug.
+// ===================================================
+
+model SalaryStructure {
+  id                 Int      @id @default(autoincrement())
+  employeeId         Int      @map("employee_id")
+  basicSalary        Decimal  @db.Decimal(12, 2) @map("basic_salary")
+  housingAllowance   Decimal  @default(0) @db.Decimal(12, 2) @map("housing_allowance")
+  transportAllowance Decimal  @default(0) @db.Decimal(12, 2) @map("transport_allowance")
+  otherAllowance     Decimal  @default(0) @db.Decimal(12, 2) @map("other_allowance")
+  pensionRate        Decimal  @default(8.0) @db.Decimal(5, 2) @map("pension_rate")
+  taxRate            Decimal? @db.Decimal(5, 2) @map("tax_rate")
+  nhfRate            Decimal  @default(2.5) @db.Decimal(5, 2) @map("nhf_rate")
+  effectiveFrom      DateTime @map("effective_from")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  employee Employee  @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  payslips Payslip[]
+
+  @@index([employeeId])
+  @@map("salary_structures")
+}
+
+model Payslip {
+  id                Int           @id @default(autoincrement())
+  employeeId        Int           @map("employee_id")
+  salaryStructureId Int?          @map("salary_structure_id")
+  month             Int
+  year              Int
+  grossEarnings     Decimal?      @db.Decimal(12, 2) @map("gross_earnings")
+  pensionDeduction  Decimal?      @db.Decimal(12, 2) @map("pension_deduction")
+  taxDeduction      Decimal?      @db.Decimal(12, 2) @map("tax_deduction")
+  nhfDeduction      Decimal?      @db.Decimal(12, 2) @map("nhf_deduction")
+  otherDeductions   Decimal       @default(0) @db.Decimal(12, 2) @map("other_deductions")
+  netSalary         Decimal?      @db.Decimal(12, 2) @map("net_salary")
+  status            PayslipStatus @default(generated)
+  paidOn            DateTime?     @map("paid_on")
+  fileUrl           String?       @map("file_url")
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  salaryStructure SalaryStructure? @relation(fields: [salaryStructureId], references: [id])
+
+  @@unique([employeeId, month, year])
+  @@map("payslips")
+}
+
+// ===================================================
+// ATTENDANCE
+// ===================================================
+
+model AttendanceRecord {
+  id         Int              @id @default(autoincrement())
+  employeeId Int              @map("employee_id")
+  date       DateTime         @db.Date
+  status     AttendanceStatus
+  clockIn    DateTime?        @map("clock_in") @db.Time
+  clockOut   DateTime?        @map("clock_out") @db.Time
+  createdAt  DateTime         @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, date])
+  @@map("attendance_records")
 }
