@@ -1,16 +1,13 @@
 import "dotenv/config";
 import app from "./app.js";
-import { PrismaClient } from "@prisma/client";
+import prisma from "./config/prisma.js";
 
 const PORT = process.env.PORT || 5000;
-
-const prisma = new PrismaClient();
 
 async function start() {
   try {
     await prisma.$connect();
     console.log("Database connected.");
-
     app.listen(PORT, () => {
       console.log(`HRMS backend running on port ${PORT}`);
     });

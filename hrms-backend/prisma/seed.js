@@ -1,7 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import prisma from "../src/config/prisma.js";
 import bcrypt from "bcrypt";
 
-const prisma = new PrismaClient();
 const SALT_ROUNDS = 10;
 
 async function hash(password) {
