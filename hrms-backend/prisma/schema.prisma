@@ -1,21 +1,18 @@
 // ===================================================
 // HRMS Backend — Prisma Schema (Merged)
-// Person 1 (Foundation): Odusanya Abayomi
-// Person 3 (Leave, Notifications, Audit)
-// Person 4 (Goals, Performance Reviews): Odusanya Abayomi
-//
-// Recruitment models (Job, Applicant, Interview — Person 2) are NOT yet
-// merged here. Coordinate with Person 2 before they add theirs — same
-// single-file rule applies.
+// Abayomi (Foundation): Authentication,Companies and Employees
+// Farouk (Recruitment): Job, Applicant, Interview
+// Dann (Leave, Notifications, Audit)
+// Mariam (Goals, Performance Reviews, Payroll, Attendance): Odusanya Abayomi
 // ===================================================
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 // ---------------------------------------------------
@@ -71,6 +68,8 @@ enum InterviewStatus {
   completed
   cancelled
   rescheduled
+}
+
 enum LeaveRequestStatus {
   pending
   approved
@@ -166,7 +165,7 @@ model User {
   refreshToken        String?   @map("refresh_token")
   createdAt           DateTime  @default(now()) @map("created_at")
   updatedAt           DateTime  @updatedAt @map("updated_at")
-  
+
   applicant      Applicant?
   company        Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   role           Role           @relation(fields: [roleId], references: [id])
@@ -279,7 +278,7 @@ model EmployeeDocument {
 }
 
 // ---------------------------------------------------
-// JOBS
+// JOBS (Person 2)
 // ---------------------------------------------------
 
 model Job {
@@ -309,7 +308,7 @@ model Job {
 }
 
 // ---------------------------------------------------
-// APPLICANTS
+// APPLICANTS (Person 2)
 // ---------------------------------------------------
 
 model Applicant {
@@ -335,7 +334,7 @@ model Applicant {
 }
 
 // ---------------------------------------------------
-// INTERVIEWS
+// INTERVIEWS (Person 2)
 // ---------------------------------------------------
 
 model Interview {
@@ -356,6 +355,7 @@ model Interview {
   @@index([applicantId])
   @@map("interviews")
 }
+
 // ===================================================
 // PERSON 3 — LEAVE MANAGEMENT, NOTIFICATIONS, AUDIT
 // ===================================================
@@ -363,7 +363,7 @@ model Interview {
 model LeaveType {
   id          Int      @id @default(autoincrement())
   companyId   Int      @map("company_id")
-  name        String                                   // Annual, Sick, Maternity, Study, Other
+  name        String
   defaultDays Decimal? @db.Decimal(5, 1) @map("default_days")
 
   company  Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -419,7 +419,7 @@ model LeaveApprovalHistory {
   id             Int      @id @default(autoincrement())
   leaveRequestId Int      @map("leave_request_id")
   actorId        Int?     @map("actor_id")
-  action         String                                 // submitted, approved, rejected, cancelled
+  action         String
   comment        String?
   createdAt      DateTime @default(now()) @map("created_at")
 
@@ -433,7 +433,7 @@ model LeaveApprovalHistory {
 model Notification {
   id                Int      @id @default(autoincrement())
   userId            Int      @map("user_id")
-  type              String?                              // leave_request, applicant, review_reminder, system
+  type              String?
   title             String?
   message           String?
   isRead            Boolean  @default(false) @map("is_read")
@@ -451,7 +451,7 @@ model Notification {
 model AuditLog {
   id        Int      @id @default(autoincrement())
   userId    Int?     @map("user_id")
-  action    String?                                       // e.g. "created employee", "approved leave"
+  action    String?
   module    String?
   details   String?
   ipAddress String?  @map("ip_address")

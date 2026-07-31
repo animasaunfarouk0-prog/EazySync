@@ -5,8 +5,12 @@ import departmentRoutes from "../modules/departments/department.routes.js";
 import employeeRoutes from "../modules/employees/employee.routes.js";
 // ---- Recruitment module imports ----
 import jobRoutes, { publicJobRoutes } from "../modules/jobs/job.routes.js";
-import applicantRoutes, { publicApplicantRoutes } from "../modules/applicants/applicant.routes.js";
-import interviewRoutes, { applicantInterviewRoutes } from "../modules/interviews/interview.routes.js";
+import applicantRoutes, {
+  publicApplicantRoutes,
+} from "../modules/applicants/applicant.routes.js";
+import interviewRoutes, {
+  applicantInterviewRoutes,
+} from "../modules/interviews/interview.routes.js";
 import leaveRoutes from "../modules/leave/leave.routes.js";
 import notificationRoutes from "../modules/notifications/notification.routes.js";
 import auditLogRoutes from "../modules/auditLog/auditLog.routes.js";
@@ -17,33 +21,33 @@ import * as reportController from "../modules/reports/report.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import tenantMiddleware from "../middlewares/tenant.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
+// ---- NEW: the audit WRITE middleware, distinct from auditLogRoutes (the READ endpoint) ----
+import auditLogger from "../middlewares/auditLogger.middleware.js";
 
 const router = express.Router();
 
-// Person 1 — Foundation (Abayomi)
+// Auth-Companies-Employees — Foundation (Abayomi)
 router.use("/auth", authRoutes);
-router.use("/companies", companyRoutes);
-router.use("/departments", departmentRoutes);
-router.use("/employees", employeeRoutes);
+router.use("/companies", auditLogger("companies"), companyRoutes);
+router.use("/departments", auditLogger("departments"), departmentRoutes);
+router.use("/employees", auditLogger("employees"), employeeRoutes);
 
 // ---- Recruitment module routes ---- Animasaun Farouk
-
-router.use("/jobs", jobRoutes);
-router.use("/applicants", applicantRoutes);
+router.use("/jobs", auditLogger("jobs"), jobRoutes);
+router.use("/applicants", auditLogger("applicants"), applicantRoutes);
 router.use("/applicants", applicantInterviewRoutes);
-router.use("/interviews", interviewRoutes);
+router.use("/interviews", auditLogger("interviews"), interviewRoutes);
 router.use("/public/jobs", publicJobRoutes);
 router.use("/public", publicApplicantRoutes);
 
-export default router;
-// Person 3 — Leave, Notifications, Audit
-router.use("/leave", leaveRoutes);
+//  Leave, Notifications, Audit
+router.use("/leave", auditLogger("leave"), leaveRoutes);
 router.use("/notifications", notificationRoutes);
 router.use("/audit-logs", auditLogRoutes);
 
-// Person 4 — Goals, Reviews, Reports & Dashboard
-router.use("/goals", goalRoutes);
-router.use("/reviews", reviewRoutes);
+//  Goals, Reviews, Reports & Dashboard
+router.use("/goals", auditLogger("goals"), goalRoutes);
+router.use("/reviews", auditLogger("reviews"), reviewRoutes);
 router.use("/reports", reportRoutes);
 
 router.get(
