@@ -9,14 +9,14 @@ export const validateApply = (req, res, next) => {
   if (!email || !EMAIL_REGEX.test(email)) errors.push("A valid email is required");
   if (!req.file) errors.push("Resume file is required");
 
-  if (errors.length) return res.status(400).json({ message: "Validation failed", errors });
+  if (errors.length) return res.status(400).json({ error: "Validation failed", details: errors });
   next();
 };
 
 export const validateApplicantStatusUpdate = (req, res, next) => {
   const validStatuses = ["new", "in_review", "shortlisted", "interviewed", "offered", "hired", "rejected"];
   if (!req.body.status || !validStatuses.includes(req.body.status)) {
-    return res.status(400).json({ message: `status must be one of: ${validStatuses.join(", ")}` });
+    return res.status(400).json({ error: `status must be one of: ${validStatuses.join(", ")}` });
   }
   next();
 };

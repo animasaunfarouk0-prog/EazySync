@@ -1,5 +1,36 @@
 import * as leaveService from "./leave.service.js";
 
+export async function listTypes(req, res, next) {
+  try {
+    const types = await leaveService.listLeaveTypes(req.companyId);
+    res.status(200).json(types);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createType(req, res, next) {
+  try {
+    const type = await leaveService.createLeaveType(req.companyId, req.body);
+    res.status(201).json(type);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createBalance(req, res, next) {
+  try {
+    const leaveTypeId = Number(req.params.id);
+    const balance = await leaveService.createBalance(req.companyId, {
+      ...req.body,
+      leaveTypeId,
+    });
+    res.status(201).json(balance);
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function dashboard(req, res, next) {
   try {
     const data = await leaveService.getDashboard(req.companyId);

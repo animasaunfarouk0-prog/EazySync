@@ -1,11 +1,15 @@
 import { Router } from "express";
 import authMiddleware from "../../middlewares/auth.middleware.js";
+import tenantMiddleware from "../../middlewares/tenant.middleware.js";
 import { requireRole } from "../../middlewares/rbac.middleware.js";
 import { validateCreateInterview, validateUpdateInterview } from "./interview.validator.js";
 import { createInterview, getInterviewsByApplicant, updateInterview } from "./interview.controller.js";
 
 const applicantInterviewRoutes = Router();
 const interviewRoutes = Router();
+
+applicantInterviewRoutes.use(authMiddleware, tenantMiddleware);
+interviewRoutes.use(authMiddleware, tenantMiddleware);
 
 // Mounted under /applicants
 applicantInterviewRoutes.get(

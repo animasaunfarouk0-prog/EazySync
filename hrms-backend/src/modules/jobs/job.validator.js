@@ -18,13 +18,13 @@ export const validateCreateJob = (req, res, next) => {
     errors.push(`status must be one of: ${VALID_STATUSES.join(", ")}`);
   }
 
-  if (errors.length) return res.status(400).json({ message: "Validation failed", errors });
+  if (errors.length) return res.status(400).json({ error: "Validation failed", details: errors });
   next();
 };
 
 export const validateJobStatusUpdate = (req, res, next) => {
   if (req.body.status && !VALID_STATUSES.includes(req.body.status)) {
-    return res.status(400).json({ message: `status must be one of: ${VALID_STATUSES.join(", ")}` });
+    return res.status(400).json({ error: `status must be one of: ${VALID_STATUSES.join(", ")}` });
   }
   next();
 };

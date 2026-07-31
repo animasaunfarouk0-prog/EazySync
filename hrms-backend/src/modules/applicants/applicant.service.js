@@ -20,6 +20,27 @@ export const assertValidApplicantTransition = (currentStatus, nextStatus) => {
   }
 };
 
+const getApplicantWithCompany = async (id) => {
+  return prisma.applicant.findUnique({
+    where: { id },
+    include: { job: true, interviews: true },
+  });
+};
+
+const assertApplicantInCompany = (applicant, companyId) => {
+  if (!applicant) {
+    const err = new Error("Applicant not found");
+    err.statusCode = 404;
+    throw err;
+  }
+  if (applicant.job.companyId !== companyId) {
+    const err = new Error("Applicant not found");
+    err.statusCode = 404;
+    throw err;
+  }
+  return applicant;
+};
+
 export const applyToJobService = async ({
   jobId,
   userId,
@@ -63,19 +84,33 @@ export const applyToJobService = async ({
   });
 };
 
-export const getApplicantsByJobService = (jobId) =>
-  prisma.applicant.findMany({
+export const getApplicantsByJobService = async (jobId, companyId) => {
+  const job = await prisma.job.findFirst({ where: { id: jobId, companyId } });
+  if (!job) {
+    const err = new Error("Job not found");
+    err.statusCode = 404;
+    throw err;
+  }
+
+  return prisma.applicant.findMany({
     where: { jobId },
     include: { job: true },
     orderBy: { appliedAt: "desc" },
   });
+};
 
-export const getApplicantService = async (id) => {
-  const applicant = await prisma.applicant.findUnique({
-    where: { id },
-    include: { job: true, interviews: true },
-  });
-  if (!applicant) {
+export const getApplicantService = async (id, companyId) => {
+  if (!companyId) {
+    const err = new Error("Company context required");
+    err.statusCode = 400;
+    throw err;
+  }
+  return assertApplicantInCompany(await getApplicantWithCompany(id), companyId);
+};
+
+export const getOwnApplicantService = async (id, userId) => {
+  const applicant = await getApplicantWithCompany(id);
+  if (!applicant || applicant.userId !== userId) {
     const err = new Error("Applicant not found");
     err.statusCode = 404;
     throw err;
@@ -90,13 +125,10 @@ export const getMyApplicationsService = (userId) =>
     orderBy: { appliedAt: "desc" },
   });
 
-export const updateApplicantStatusService = async (id, nextStatus) => {
-  const existing = await prisma.applicant.findUnique({ where: { id } });
-  if (!existing) {
-    const err = new Error("Applicant not found");
-    err.statusCode = 404;
-    throw err;
-  }
-  assertValidApplicantTransition(existing.status, nextStatus);
+export const updateApplicantStatusService = async (id, companyId, nextStatus) => {
+  const applicant = await getApplicantWithCompany(id);
+  assertApplicantInCompany(applicant, companyId);
+
+  assertValidApplicantTransition(applicant.status, nextStatus);
   return prisma.applicant.update({ where: { id }, data: { status: nextStatus } });
 };

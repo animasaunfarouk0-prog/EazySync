@@ -16,6 +16,17 @@ export const cancelSchema = Joi.object({
   reason: Joi.string().optional().allow(null, ""),
 });
 
+export const createLeaveTypeSchema = Joi.object({
+  name: Joi.string().min(1).required(),
+  defaultDays: Joi.number().precision(1).min(0).optional().allow(null),
+});
+
+export const createBalanceSchema = Joi.object({
+  employeeId: Joi.number().integer().required(),
+  year: Joi.number().integer().required(),
+  totalDays: Joi.number().precision(1).min(0).required(),
+});
+
 export function validate(schema) {
   return (req, res, next) => {
     const { error, value } = schema.validate(req.body, { abortEarly: false });

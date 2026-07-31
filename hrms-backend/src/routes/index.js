@@ -21,7 +21,7 @@ import * as reportController from "../modules/reports/report.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import tenantMiddleware from "../middlewares/tenant.middleware.js";
 import { requireRole } from "../middlewares/rbac.middleware.js";
-// ---- NEW: the audit WRITE middleware, distinct from auditLogRoutes (the READ endpoint) ----
+
 import auditLogger from "../middlewares/auditLogger.middleware.js";
 
 const router = express.Router();

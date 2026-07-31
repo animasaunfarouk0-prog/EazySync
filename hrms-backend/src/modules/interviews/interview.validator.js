@@ -12,7 +12,7 @@ export const validateCreateInterview = (req, res, next) => {
     errors.push(`mode must be one of: ${VALID_MODES.join(", ")}`);
   }
 
-  if (errors.length) return res.status(400).json({ message: "Validation failed", errors });
+  if (errors.length) return res.status(400).json({ error: "Validation failed", details: errors });
   next();
 };
 
@@ -30,6 +30,6 @@ export const validateUpdateInterview = (req, res, next) => {
     errors.push("rating must be a number between 1 and 5");
   }
 
-  if (errors.length) return res.status(400).json({ message: "Validation failed", errors });
+  if (errors.length) return res.status(400).json({ error: "Validation failed", details: errors });
   next();
 };

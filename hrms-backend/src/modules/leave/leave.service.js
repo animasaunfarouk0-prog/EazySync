@@ -1,5 +1,62 @@
 import prisma from "../../config/prisma.js";
 
+export async function listLeaveTypes(companyId) {
+  return prisma.leaveType.findMany({
+    where: { companyId },
+    orderBy: { name: "asc" },
+  });
+}
+
+export async function createLeaveType(companyId, data) {
+  const existing = await prisma.leaveType.findFirst({
+    where: { companyId, name: data.name },
+  });
+  if (existing) {
+    const err = new Error("Leave type already exists in this company");
+    err.status = 409;
+    throw err;
+  }
+
+  return prisma.leaveType.create({
+    data: { companyId, name: data.name, defaultDays: data.defaultDays ?? null },
+  });
+}
+
+export async function createBalance(companyId, data) {
+  const employee = await prisma.employee.findFirst({
+    where: { id: data.employeeId, companyId },
+  });
+  if (!employee) {
+    const err = new Error("Employee not found in this company");
+    err.status = 404;
+    throw err;
+  }
+
+  const existing = await prisma.leaveBalance.findUnique({
+    where: {
+      employeeId_leaveTypeId_year: {
+        employeeId: data.employeeId,
+        leaveTypeId: data.leaveTypeId,
+        year: data.year,
+      },
+    },
+  });
+  if (existing) {
+    const err = new Error("Balance already exists for this employee, leave type, and year");
+    err.status = 409;
+    throw err;
+  }
+
+  return prisma.leaveBalance.create({
+    data: {
+      employeeId: data.employeeId,
+      leaveTypeId: data.leaveTypeId,
+      year: data.year,
+      totalDays: data.totalDays,
+    },
+  });
+}
+
 export async function getDashboard(companyId) {
   const today = new Date();
   const year = today.getFullYear();

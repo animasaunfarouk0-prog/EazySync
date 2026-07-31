@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authMiddleware from "../../middlewares/auth.middleware.js";
+import tenantMiddleware from "../../middlewares/tenant.middleware.js";
 import { requireRole } from "../../middlewares/rbac.middleware.js";
 import { uploadResume } from "../../middlewares/resumeUpload.middleware.js";
 import { validateApply, validateApplicantStatusUpdate } from "./applicant.validator.js";
@@ -13,6 +14,8 @@ import {
 
 const router = Router();
 const publicRouter = Router();
+
+router.use(authMiddleware, tenantMiddleware);
 
 // Protected — hr_admin, manager
 router.get("/:id", authMiddleware, requireRole(["hr_admin", "manager"]), getApplicantById);

@@ -8,11 +8,27 @@ import {
   createLeaveRequestSchema,
   approveRejectSchema,
   cancelSchema,
+  createLeaveTypeSchema,
+  createBalanceSchema,
 } from "./leave.validator.js";
 
 const router = express.Router();
 
 router.use(authMiddleware, tenantMiddleware);
+
+router.get("/types", requireRole(["hr_admin", "manager"]), leaveController.listTypes);
+router.post(
+  "/types",
+  requireRole(["hr_admin"]),
+  validate(createLeaveTypeSchema),
+  leaveController.createType
+);
+router.post(
+  "/types/:id/balances",
+  requireRole(["hr_admin"]),
+  validate(createBalanceSchema),
+  leaveController.createBalance
+);
 
 router.get(
   "/dashboard",
