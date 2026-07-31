@@ -51,7 +51,11 @@ export async function attendanceReport(req, res, next) {
 
 export async function recruitmentReport(req, res, next) {
   try {
-    const data = await reportService.recruitmentReport(req.companyId);
+    const { from, to } = req.query;
+    const data = await reportService.recruitmentReport(req.companyId, {
+      from,
+      to,
+    });
     res.status(200).json(data);
   } catch (err) {
     next(err);

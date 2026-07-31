@@ -131,12 +131,65 @@ export async function attendanceReport(companyId, filters = {}) {
   };
 }
 
-export async function recruitmentReport(companyId) {
-  // Recruitment module is Person 2's domain — models not yet merged.
-  // Returns a placeholder until models are available.
+export async function recruitmentReport(companyId, filters = {}) {
+  const { from, to } = filters;
+  const startDate = from ? new Date(from) : new Date(new Date().getFullYear(), 0, 1);
+  const endDate = to ? new Date(to) : new Date();
+
+  const [jobStats, applicantStats, recentApplicants, interviewStats] =
+    await Promise.all([
+      prisma.job.groupBy({
+        by: ["status"],
+        where: { companyId, createdAt: { gte: startDate, lte: endDate } },
+        _count: { id: true },
+      }),
+      prisma.applicant.groupBy({
+        by: ["status"],
+        where: { job: { companyId }, appliedAt: { gte: startDate, lte: endDate } },
+        _count: { id: true },
+      }),
+      prisma.applicant.findMany({
+        where: { job: { companyId }, appliedAt: { gte: startDate, lte: endDate } },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          status: true,
+          appliedAt: true,
+          job: { select: { title: true, jobCode: true } },
+        },
+        orderBy: { appliedAt: "desc" },
+        take: 20,
+      }),
+      prisma.interview.aggregate({
+        where: { applicant: { job: { companyId } }, createdAt: { gte: startDate, lte: endDate } },
+        _count: true,
+        _avg: { rating: true },
+      }),
+    ]);
+
+  const jobDistribution = Object.fromEntries(
+    jobStats.map((s) => [s.status, s._count.id])
+  );
+  const applicantDistribution = Object.fromEntries(
+    applicantStats.map((s) => [s.status, s._count.id])
+  );
+
   return {
-    message: "Recruitment report — models not yet available",
-    note: "Coordinate with Person 2 to integrate recruitment models",
+    period: { from: startDate, to: endDate },
+    jobs: {
+      total: jobStats.reduce((sum, s) => sum + s._count.id, 0),
+      byStatus: jobDistribution,
+    },
+    applicants: {
+      total: applicantStats.reduce((sum, s) => sum + s._count.id, 0),
+      byStatus: applicantDistribution,
+      recent: recentApplicants,
+    },
+    interviews: {
+      total: interviewStats._count,
+      averageRating: interviewStats._avg?.rating ?? null,
+    },
   };
 }
 
