@@ -70,7 +70,7 @@ export const updateApplicantStatus = async (req, res, next) => {
 // GET /public/applicants/me — applicant (own applications list)
 export const getMyApplications = async (req, res, next) => {
   try {
-    const applications = await getMyApplicationsService(req.user.id);
+    const applications = await getMyApplicationsService(req.user.userId);
     res.status(200).json(applications);
   } catch (error) {
     next(error);
@@ -82,7 +82,7 @@ export const getMyApplicationById = async (req, res, next) => {
   try {
     const applicant = await getOwnApplicantService(
       Number(req.params.id),
-      req.user.id
+      req.user.userId
     );
     res.status(200).json(applicant);
   } catch (error) {

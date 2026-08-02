@@ -17,6 +17,8 @@ import auditLogRoutes from "../modules/auditLog/auditLog.routes.js";
 import goalRoutes from "../modules/goals/goal.routes.js";
 import reviewRoutes from "../modules/reviews/review.routes.js";
 import reportRoutes from "../modules/reports/report.routes.js";
+import attendanceRoutes from "../modules/attendance/attendance.routes.js";
+import payrollRoutes from "../modules/payroll/payroll.routes.js";
 import * as reportController from "../modules/reports/report.controller.js";
 import authMiddleware from "../middlewares/auth.middleware.js";
 import tenantMiddleware from "../middlewares/tenant.middleware.js";
@@ -49,6 +51,10 @@ router.use("/audit-logs", auditLogRoutes);
 router.use("/goals", auditLogger("goals"), goalRoutes);
 router.use("/reviews", auditLogger("reviews"), reviewRoutes);
 router.use("/reports", reportRoutes);
+
+//  Attendance & Payroll
+router.use("/attendance", auditLogger("attendance"), attendanceRoutes);
+router.use("/payroll", auditLogger("payroll"), payrollRoutes);
 
 router.get(
   "/dashboard/admin",
