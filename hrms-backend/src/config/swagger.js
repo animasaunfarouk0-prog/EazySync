@@ -10,8 +10,10 @@ const swaggerSpec = {
   },
   servers: [
     { url: "http://localhost:5000/api/v1", description: "Local development" },
-    // I'll add the production URL here once deployed, e.g.:
-    // { url: 'https://hrms-backend.onrender.com/api/v1', description: 'Production' },
+    {
+      url: "https://hrms-backend-kfn0.onrender.com/api/v1",
+      description: "Production",
+    },
   ],
   components: {
     securitySchemes: {
