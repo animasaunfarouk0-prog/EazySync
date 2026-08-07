@@ -1,4 +1,5 @@
 import prisma from "../../config/prisma.js";
+import { notify } from "../notifications/notification.service.js";
 
 export async function listLeaveTypes(companyId) {
   return prisma.leaveType.findMany({
@@ -22,12 +23,24 @@ export async function createLeaveType(companyId, data) {
   });
 }
 
+// FIX: now validates leaveTypeId belongs to this company before creating
+// a balance against it — previously an hr_admin could point at another
+// company's leaveTypeId with no check.
 export async function createBalance(companyId, data) {
   const employee = await prisma.employee.findFirst({
     where: { id: data.employeeId, companyId },
   });
   if (!employee) {
     const err = new Error("Employee not found in this company");
+    err.status = 404;
+    throw err;
+  }
+
+  const leaveType = await prisma.leaveType.findFirst({
+    where: { id: data.leaveTypeId, companyId },
+  });
+  if (!leaveType) {
+    const err = new Error("Leave type not found in this company");
     err.status = 404;
     throw err;
   }
@@ -42,7 +55,9 @@ export async function createBalance(companyId, data) {
     },
   });
   if (existing) {
-    const err = new Error("Balance already exists for this employee, leave type, and year");
+    const err = new Error(
+      "Balance already exists for this employee, leave type, and year"
+    );
     err.status = 409;
     throw err;
   }
@@ -184,6 +199,9 @@ export async function getRequestById(companyId, user, requestId) {
   return request;
 }
 
+// FIX: no more silent bypass when no balance exists — now REJECTS the
+// request with a clear error instead of letting unlimited, untracked
+// leave through. Also now notifies the employee's manager on submission.
 export async function createRequest(companyId, employeeId, data) {
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, companyId },
@@ -218,15 +236,24 @@ export async function createRequest(companyId, employeeId, data) {
     },
   });
 
-  if (balance) {
-    const available = Number(balance.totalDays) - Number(balance.usedDays) - Number(balance.pendingDays);
-    if (diffDays > available) {
-      const err = new Error(
-        `Insufficient leave balance. Available: ${available} days, requested: ${diffDays} days`
-      );
-      err.status = 400;
-      throw err;
-    }
+  if (!balance) {
+    const err = new Error(
+      "No leave balance set up for this leave type/year. Contact HR to set one up before applying."
+    );
+    err.status = 400;
+    throw err;
+  }
+
+  const available =
+    Number(balance.totalDays) -
+    Number(balance.usedDays) -
+    Number(balance.pendingDays);
+  if (diffDays > available) {
+    const err = new Error(
+      `Insufficient leave balance. Available: ${available} days, requested: ${diffDays} days`
+    );
+    err.status = 400;
+    throw err;
   }
 
   const [request] = await prisma.$transaction(async (tx) => {
@@ -251,19 +278,34 @@ export async function createRequest(companyId, employeeId, data) {
       },
     });
 
-    if (balance) {
-      await tx.leaveBalance.update({
-        where: { id: balance.id },
-        data: { pendingDays: { increment: diffDays } },
-      });
-    }
+    await tx.leaveBalance.update({
+      where: { id: balance.id },
+      data: { pendingDays: { increment: diffDays } },
+    });
 
     return [leaveRequest];
   });
 
+  if (employee.reportsToId) {
+    const manager = await prisma.employee.findUnique({
+      where: { id: employee.reportsToId },
+    });
+    if (manager) {
+      await notify({
+        userId: manager.userId,
+        type: "leave_request",
+        title: "New leave request",
+        message: `${employee.firstName} ${employee.lastName} submitted a leave request for ${diffDays} day(s).`,
+        relatedEntityType: "leave_request",
+        relatedEntityId: request.id,
+      });
+    }
+  }
+
   return request;
 }
 
+// FIX: now notifies the employee once their request is approved.
 export async function approveRequest(companyId, user, requestId, { comment }) {
   const request = await prisma.leaveRequest.findFirst({
     where: { id: requestId, employee: { companyId } },
@@ -325,9 +367,24 @@ export async function approveRequest(companyId, user, requestId, { comment }) {
     return [updatedRequest];
   });
 
+  const employee = await prisma.employee.findUnique({
+    where: { id: updated.employeeId },
+  });
+  if (employee) {
+    await notify({
+      userId: employee.userId,
+      type: "leave_request",
+      title: "Leave request approved",
+      message: "Your leave request has been approved.",
+      relatedEntityType: "leave_request",
+      relatedEntityId: updated.id,
+    });
+  }
+
   return updated;
 }
 
+// FIX: now notifies the employee once their request is rejected.
 export async function rejectRequest(companyId, user, requestId, { comment }) {
   const request = await prisma.leaveRequest.findFirst({
     where: { id: requestId, employee: { companyId } },
@@ -387,6 +444,22 @@ export async function rejectRequest(companyId, user, requestId, { comment }) {
     return [updatedRequest];
   });
 
+  const employee = await prisma.employee.findUnique({
+    where: { id: updated.employeeId },
+  });
+  if (employee) {
+    await notify({
+      userId: employee.userId,
+      type: "leave_request",
+      title: "Leave request rejected",
+      message: `Your leave request was rejected.${
+        comment ? ` Reason: ${comment}` : ""
+      }`,
+      relatedEntityType: "leave_request",
+      relatedEntityId: updated.id,
+    });
+  }
+
   return updated;
 }
 
@@ -408,7 +481,9 @@ export async function cancelRequest(companyId, user, requestId, { reason }) {
   }
 
   if (!["pending", "approved"].includes(request.status)) {
-    const err = new Error("Leave request cannot be cancelled in its current state");
+    const err = new Error(
+      "Leave request cannot be cancelled in its current state"
+    );
     err.status = 400;
     throw err;
   }

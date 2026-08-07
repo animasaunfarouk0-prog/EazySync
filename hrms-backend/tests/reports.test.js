@@ -31,6 +31,10 @@ describe("REPORTS (Person 4)", () => {
       .set(auth(org.hrToken))
       .send({ name: "Annual Leave" });
     await request(app)
+      .post(`/api/v1/leave/types/${type.body.id}/balances`)
+      .set(auth(org.hrToken))
+      .send({ employeeId: org.empEmployee.id, year: 2026, totalDays: 21 });
+    await request(app)
       .post("/api/v1/leave/requests")
       .set(auth(org.empToken))
       .send({

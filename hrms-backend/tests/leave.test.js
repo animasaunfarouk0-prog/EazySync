@@ -142,6 +142,10 @@ describe("LEAVE (Person 3)", () => {
       .post("/api/v1/leave/types")
       .set(auth(org.hrToken))
       .send({ name: "Annual Leave" });
+    await request(app)
+      .post(`/api/v1/leave/types/${type.body.id}/balances`)
+      .set(auth(org.hrToken))
+      .send({ employeeId: org.empEmployee.id, year, totalDays: 21 });
     const req = await request(app)
       .post("/api/v1/leave/requests")
       .set(auth(org.empToken))
@@ -234,6 +238,10 @@ describe("LEAVE (Person 3)", () => {
       .post("/api/v1/leave/types")
       .set(auth(org.hrToken))
       .send({ name: "Annual Leave" });
+    await request(app)
+      .post(`/api/v1/leave/types/${type.body.id}/balances`)
+      .set(auth(org.hrToken))
+      .send({ employeeId: org.empEmployee.id, year, totalDays: 21 });
 
     const empReq = await request(app)
       .post("/api/v1/leave/requests")
@@ -249,6 +257,10 @@ describe("LEAVE (Person 3)", () => {
       .post("/api/v1/employees")
       .set(auth(org.hrToken))
       .send({ userId: otherUser.id, firstName: "Other", lastName: "Employee", departmentId: org.department.id });
+    await request(app)
+      .post(`/api/v1/leave/types/${type.body.id}/balances`)
+      .set(auth(org.hrToken))
+      .send({ employeeId: otherEmp.body.id, year, totalDays: 21 });
     const otherToken = await loginAs(otherUser);
     const otherReq = await request(app)
       .post("/api/v1/leave/requests")
